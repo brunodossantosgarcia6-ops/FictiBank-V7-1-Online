@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>FictiBank V7.1</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#f4f2fb;color:#171321}
+button,input{font:inherit}button{border:0;cursor:pointer}.hidden{display:none!important}
+#app{min-height:100vh}.login{min-height:100vh;display:grid;place-items:center;padding:24px;background:linear-gradient(145deg,#6d3bd1,#8c5be7 48%,#f4f2fb 48%)}
+.card{background:#fff;border-radius:28px;box-shadow:0 18px 60px #25153d22;padding:28px;width:min(430px,100%)}.logo{font-size:32px;font-weight:900;color:#6d3bd1}.sub{color:#77718a;margin:8px 0 24px}
+label{display:block;font-size:13px;font-weight:800;margin:14px 0 7px}.input{width:100%;padding:14px 15px;border:1px solid #e2deea;border-radius:14px;outline:none}.input:focus{border-color:#7a4be0;box-shadow:0 0 0 4px #7a4be015}
+.btn{width:100%;padding:14px;border-radius:14px;background:#6d3bd1;color:#fff;font-weight:800;margin-top:16px}.btn.secondary{background:#eeeaf7;color:#5f35b7}.btn.danger{background:#fff0f1;color:#b32636}
+.hint{font-size:12px;color:#8a8497;margin-top:12px;line-height:1.5}
+header{background:linear-gradient(135deg,#6d3bd1,#8e5ce8);color:#fff;padding:22px 18px 38px;border-radius:0 0 30px 30px}.top{display:flex;justify-content:space-between;align-items:center;max-width:900px;margin:auto}.brand{font-size:21px;font-weight:900}.logout{background:#ffffff22;color:#fff;padding:9px 12px;border-radius:12px}
+main{max-width:900px;margin:-20px auto 90px;padding:0 16px}.balance{background:#fff;border-radius:24px;padding:22px;box-shadow:0 12px 40px #25153d14}.small{font-size:12px;color:#817b8e}.money{font-size:34px;font-weight:900;margin:5px 0 18px}.key{display:flex;gap:8px;align-items:center;background:#f4f1fa;border-radius:14px;padding:10px 12px;font-size:13px}.key span{flex:1;overflow:hidden;text-overflow:ellipsis}.copy{background:#fff;border:1px solid #e4dfed;padding:8px 10px;border-radius:10px;color:#6338bd;font-weight:800}
+.actions{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:15px 0}.act{background:#fff;padding:15px 8px;border-radius:18px;text-align:center;font-weight:800;color:#5630a7;box-shadow:0 8px 25px #25153d0d}.act div{font-size:22px;margin-bottom:5px}.panel{background:#fff;border-radius:22px;padding:20px;margin-top:15px;box-shadow:0 8px 25px #25153d0d}.panel h2{font-size:18px;margin:0 0 15px}.row{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:14px 0;border-bottom:1px solid #eeeaf2}.row:last-child{border-bottom:0}.plus{color:#16864c}.minus{color:#b52e42}.txid{font-size:10px;color:#999;margin-top:4px}.empty{text-align:center;color:#8a8497;padding:22px}
+.modal{position:fixed;inset:0;background:#17132188;display:grid;place-items:end center;padding:16px;z-index:5}.sheet{background:#fff;border-radius:24px;padding:22px;width:min(520px,100%);max-height:90vh;overflow:auto}.sheet h2{margin-top:0}.close{float:right;background:#eeeaf7;border-radius:50%;width:34px;height:34px}.toast{position:fixed;left:50%;bottom:25px;transform:translateX(-50%);background:#171321;color:#fff;padding:12px 16px;border-radius:13px;z-index:10;max-width:90%;font-size:13px}
+@media(max-width:500px){.actions{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div id="login" class="login">
+  <div class="card">
+    <div class="logo">FictiBank</div>
+    <div class="sub">V7.1 Online • simulador fictício</div>
+    <label>Conta</label>
+    <select id="user" class="input"><option value="bruno">Bruno</option><option value="irmao">Irmão</option></select>
+    <label>PIN</label><input id="pin" class="input" type="password" inputmode="numeric" maxlength="4" placeholder="Digite seu PIN">
+    <button id="loginBtn" class="btn">Entrar</button>
+    <div class="hint">Bruno: 1234 • Irmão: 4321<br>Não existe conexão com bancos ou Pix real.</div>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+<header><div class="top"><div class="brand">FictiBank</div><button id="logout" class="logout">Sair</button></div></header>
+<main>
+  <section class="balance">
+    <div class="small">Saldo disponível</div><div id="balance" class="money">R$ 0,00</div>
+    <div class="key"><span id="pixkey">—</span><button id="copyKey" class="copy">Copiar</button></div>
+  </section>
+  <div class="actions">
+    <button class="act" data-open="pix"><div>↗</div>Pix</button>
+    <button class="act" data-open="add"><div>＋</div>Adicionar</button>
+    <button class="act" data-open="history"><div>▤</div>Extrato</button>
+    <button class="act" data-open="profile"><div>◉</div>Perfil</button>
+  </div>
+  <section class="panel"><h2>Últimas movimentações</h2><div id="list"></div></section>
+</main>
+</div>
+
+<div id="modal" class="modal hidden"><div class="sheet"><button id="close" class="close">×</button><div id="modalContent"></div></div></div>
+<div id="toast" class="toast hidden"></div>
+
+<script>
+let me=null, timer=null;
+const $=s=>document.querySelector(s);
+const money=v=>Number(v).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+function toast(t){$("#toast").textContent=t;$("#toast").classList.remove("hidden");clearTimeout(timer);timer=setTimeout(()=>$("#toast").classList.add("hidden"),2500)}
+async function api(url,opt={}){const r=await fetch(url,{headers:{"Content-Type":"application/json"},...opt});const j=await r.json().catch(()=>({error:"Erro no servidor"}));if(!r.ok)throw new Error(j.error||"Erro");return j}
+function showModal(html){$("#modalContent").innerHTML=html;$("#modal").classList.remove("hidden")}
+function closeModal(){$("#modal").classList.add("hidden")}
+function renderTx(tx){
+ const incoming=tx.to_id===me.id, sign=incoming?"+":"-";
+ return `<div class="row"><div><b>${incoming?"Pix recebido":"Pix enviado"}</b><div class="small">${incoming?"De: "+(tx.from_name||"Conta"):"Para: "+(tx.to_name||"Conta")} • ${new Date(tx.created_at).toLocaleString("pt-BR")}</div><div class="txid">${tx.id}</div></div><strong class="${incoming?"plus":"minus"}">${sign} ${money(tx.amount)}</strong></div>`;
+}
+async function refresh(){
+ const d=await api("/api/account/"+me.id);me=d.user;
+ $("#balance").textContent=money(me.balance);$("#pixkey").textContent=me.pix_key;
+ $("#list").innerHTML=d.transactions.length?d.transactions.slice(0,6).map(renderTx).join(""):`<div class="empty">Nenhuma movimentação ainda.</div>`;
+}
+$("#loginBtn").onclick=async()=>{
+ try{const d=await api("/api/login",{method:"POST",body:JSON.stringify({id:$("#user").value,pin:$("#pin").value})});me=d.user;$("#login").classList.add("hidden");$("#app").classList.remove("hidden");await refresh();toast("Login realizado!")}catch(e){toast(e.message)}
+};
+$("#pin").addEventListener("keydown",e=>{if(e.key==="Enter")$("#loginBtn").click()});
+$("#logout").onclick=()=>{me=null;$("#app").classList.add("hidden");$("#login").classList.remove("hidden");$("#pin").value=""};
+$("#copyKey").onclick=async()=>{await navigator.clipboard.writeText(me.pix_key);toast("Chave Pix copiada!")};
+$("#close").onclick=closeModal;$("#modal").onclick=e=>{if(e.target.id==="modal")closeModal()};
+document.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>{
+ const type=b.dataset.open;
+ if(type==="pix")showModal(`<h2>Enviar Pix</h2><label>Chave Pix do destinatário</label><input id="toKey" class="input" placeholder="ex.: irmao@fictibank"><label>Valor</label><input id="amount" class="input" type="number" min="0.01" step="0.01" placeholder="0,00"><label>Descrição</label><input id="desc" class="input" placeholder="Pix fictício"><button id="send" class="btn">Enviar Pix</button>`);
+ if(type==="add")showModal(`<h2>Adicionar dinheiro fictício</h2><div class="hint">Isso apenas aumenta o saldo da simulação.</div><label>Valor</label><input id="addAmount" class="input" type="number" min="0.01" step="0.01" placeholder="100"><button id="addBtn" class="btn">Adicionar saldo</button>`);
+ if(type==="history")showModal(`<h2>Extrato completo</h2><div id="fullHistory" class="empty">Carregando...</div>`);
+ if(type==="profile")showModal(`<h2>Perfil</h2><p><b>${me.name}</b></p><p class="small">Chave Pix: ${me.pix_key}</p><p class="small">Conta: ${me.id}</p><p class="small">FictiBank V7.1 Online</p><button id="profileClose" class="btn secondary">Fechar</button>`);
+ if(type==="history")api("/api/account/"+me.id).then(d=>$("#fullHistory").innerHTML=d.transactions.length?d.transactions.map(renderTx).join(""):`<div class="empty">Nenhuma movimentação.</div>`);
+});
+document.addEventListener("click",async e=>{
+ if(e.target.id==="send")try{
+   const d=await api("/api/pix",{method:"POST",body:JSON.stringify({from_id:me.id,pix_key:$("#toKey").value,amount:$("#amount").value,description:$("#desc").value})});
+   await refresh();closeModal();toast("Pix enviado! ID: "+d.txid);
+ }catch(x){toast(x.message)}
+ if(e.target.id==="addBtn")try{
+   await api("/api/add-money",{method:"POST",body:JSON.stringify({id:me.id,amount:$("#addAmount").value})});
+   await refresh();closeModal();toast("Saldo fictício adicionado!");
+ }catch(x){toast(x.message)}
+ if(e.target.id==="profileClose")closeModal();
+});
+</script>
+</body>
+</ht
+  ml>
